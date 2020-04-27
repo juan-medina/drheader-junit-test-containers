@@ -26,12 +26,12 @@ public class DrTests {
     void setup() {
         Testcontainers.exposeHostPorts(port);
         drHEADerContainer = new GenericContainer<>(
-            new ImageFromDockerfile()
+            new ImageFromDockerfile("drheader", true)
                 .withDockerfileFromBuilder(builder ->
                     builder
                         .from("python:3.7.4")
                         .run("git clone https://github.com/Santandersecurityresearch/DrHeader.git")
-                        .run("cd DrHeader && pip install .")
+                        .run("cd DrHeader && git checkout master && git pull && pip install .")
                         .entryPoint("tail -f /dev/null")
                         .build()));
         drHEADerContainer.start();
@@ -47,9 +47,8 @@ public class DrTests {
         final ExecResult execResult = drHEADerContainer.execInContainer("drheader", "scan", "single", testUrl);
         drHEADerContainer.stop();
 
-        final String out = execResult.getStdout().trim();
-        if (!out.equals(NO_ISSUES)) {
-            throw new AssertionError(String.format("Error on drHEADer analysis : \n%s", out));
+        if (execResult.getExitCode() != 0) {
+            throw new AssertionError(String.format("Error on drHEADer analysis : \n%s", execResult.getStdout()));
         }
     }
 
